@@ -1,28 +1,31 @@
-"""
-Shared: JSON persistence, owned by Engineer A
-"""
 import json
 import os
+REQUIRED_KEYS = {"id","title","category","urgency","affected_users","priority","status","assigned_to","notes"}
 
-DEFAULT_PATH = "data/tickets.json"
+def _validate_ticket_shape(t):
+    if not isinstance(t, dict): raise ValueError("Ticket must be dict")
+    if not REQUIRED_KEYS.issubset(t.keys()): raise ValueError(f"Missing keys in {t.get('id')}")
+    if not isinstance(t["notes"], list): raise ValueError("Notes must be list")
+    seen_n=set()
+    for n in t["notes"]:
+        if not isinstance(n, dict): raise ValueError("Note must be dict")
+        if not {"note_id","author","message"}.issubset(n.keys()): raise ValueError("Invalid note shape")
+        if n["note_id"] in seen_n: raise ValueError(f"Duplicate note ID {n['note_id']} in ticket {t['id']}")
+        seen_n.add(n["note_id"])
 
-def load_tickets(path=DEFAULT_PATH):
-    """Load tickets from JSON. Handles missing file and malformed JSON."""
+def load_tickets(path):
     if not os.path.exists(path):
-        # Missing file = fresh start, not error
         return []
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            if not isinstance(data, list):
-                raise ValueError("Tickets file must contain a list")
-            return data
-    except json.JSONDecodeError as e:
-        # Malformed JSON = clear error, DO NOT silently erase data
-        raise ValueError(f"Malformed JSON in {path}: {e}. Data not erased; fix file or delete to start fresh.") from e
+    with open(path,'r') as f:
+        try: data=json.load(f)
+        except json.JSONDecodeError as e: raise ValueError(f"Corrupt JSON: {e}")
+    if not isinstance(data,list): raise ValueError("JSON root must be list")
+    seen=set()
+    for ticket in data:
+        _validate_ticket_shape(ticket)
+        if ticket["id"] in seen: raise ValueError(f"Duplicate ticket ID {ticket['id']}")
+        seen.add(ticket["id"])
+    return data
 
-def save_tickets(tickets, path=DEFAULT_PATH):
-    """Save tickets to JSON, creating data/ folder if needed."""
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(tickets, f, indent=2)
+def save_tickets(path,tickets):
+    with open(path,'w') as f: json.dump(tickets,f,indent=2)
