@@ -59,3 +59,16 @@ def find_ticket(tickets, ticket_id):
         if t["id"] == ticket_id:
             return t
     return None
+
+# --- Compatibility aliases for old tests ---
+PRIORITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+def calculate_priority(urgency, affected_users):
+    return _compute_priority(urgency, affected_users)
+
+def validate_affected_users(raw):
+    if isinstance(raw, bool): raise ValueError("affected_users cannot be bool")
+    if isinstance(raw, str): raise ValueError("affected_users must be integer")
+    if isinstance(raw, float): raise ValueError("affected_users must be integer, not float")
+    if not isinstance(raw, int): raise ValueError("affected_users must be integer")
+    if raw <= 0: raise ValueError("affected_users must be positive")
+    return raw
