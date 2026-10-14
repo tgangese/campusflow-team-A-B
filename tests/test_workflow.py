@@ -54,6 +54,9 @@ class TestTicketStatusWorkflow(unittest.TestCase):
             5,
         )
 
+        # Assign a staff member so the ticket can enter in_progress.
+        assign_ticket(self.tickets, "T001", "Felix")
+
     def test_open_ticket_moves_to_in_progress(self):
         ticket = update_ticket_status(
             self.tickets, "T001", "in_progress"
@@ -87,12 +90,38 @@ class TestTicketStatusWorkflow(unittest.TestCase):
         with self.assertRaises(ValueError):
             update_ticket_status(self.tickets, "T001", "resolved")
 
-    def test_resolved_ticket_cannot_be_reopened(self):
+    def test_resolved_ticket_can_be_reopened(self):
+        update_ticket_status(self.tickets, "T001", "in_progress")
+        update_ticket_status(self.tickets, "T001", "resolved")
+
+        ticket = update_ticket_status(
+            self.tickets, "T001", "open"
+        )
+
+        self.assertEqual(ticket["status"], "open")
+
+    def test_resolved_ticket_cannot_restart_directly(self):
         update_ticket_status(self.tickets, "T001", "in_progress")
         update_ticket_status(self.tickets, "T001", "resolved")
 
         with self.assertRaises(ValueError):
-            update_ticket_status(self.tickets, "T001", "open")
+            update_ticket_status(
+                self.tickets, "T001", "in_progress"
+            )
+
+    def test_unassigned_ticket_cannot_start_work(self):
+        tickets = []
+
+        create_ticket(
+            tickets,
+            "Printer is not working",
+            "hardware",
+            "medium",
+            2,
+        )
+
+        with self.assertRaises(ValueError):
+            update_ticket_status(tickets, "T001", "in_progress")
 
     def test_unknown_ticket_is_rejected(self):
         with self.assertRaises(ValueError):
