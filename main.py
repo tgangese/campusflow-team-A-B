@@ -2,12 +2,12 @@ from campusflow.tickets import create_ticket, find_ticket
 from campusflow.storage import load_tickets, save_tickets
 from campusflow.workflow import assign_ticket, update_ticket_status
 from campusflow.queue import get_open_tickets, get_assigned_tickets, sort_tickets_by_priority
-from campusflow.reports import (
-    get_ticket_summary,
-    count_tickets_by_status,
-    count_tickets_by_priority,
-    count_tickets_by_category,
-    count_assignment_status
+from campusflow.cli import (
+    menu_add_note,
+    menu_view_notes,
+    menu_search,
+    menu_reports,
+    menu_understanding_check,
 )
 
 def main():
@@ -21,8 +21,12 @@ def main():
         print("4. Assign ticket (F3)")
         print("5. Update status (F4)")
         print("6. Show priority queue (F5)")
-        print("7. Reports (F6)")
-        print("8. Save & Exit (F7)")
+        print("7. Add follow-up note")
+        print("8. Search tickets")
+        print("9. Reports")
+        print("10. View ticket notes")
+        print("11. Engineering Understanding Check")
+        print("12. Save & Exit (F7)")
         
         choice = input("Choice: ").strip()
         
@@ -75,19 +79,27 @@ def main():
                 print(f"{t['priority'].upper():8} | {t['id']} | {t['title']} | {t['affected_users']} users")
                 
         elif choice == "7":
-            print("\n=== REPORTS (F6) ===")
-            print(f"Total: {len(tickets)}")
-            print("By Status:", count_tickets_by_status(tickets))
-            print("By Priority:", count_tickets_by_priority(tickets))
-            print("By Category:", count_tickets_by_category(tickets))
-            print("Assignment:", count_assignment_status(tickets))
-            print("\nSummary:")
-            print(get_ticket_summary(tickets))
-            
+            menu_add_note(tickets)
+
         elif choice == "8":
+            menu_search(tickets)
+
+        elif choice == "9":
+            menu_reports(tickets)
+
+        elif choice == "10":
+            menu_view_notes(tickets)
+
+        elif choice == "11":
+            menu_understanding_check(notes_path="data/understanding-notes.txt")
+
+        elif choice == "12":
             save_tickets(tickets)
             print(f"Saved {len(tickets)} tickets to data/tickets.json. Bye!")
             break
+
+        else:
+            print("Invalid choice. Please enter a number from 1 to 12.")
 
 if __name__ == "__main__":
     main()
