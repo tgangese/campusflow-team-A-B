@@ -1,7 +1,16 @@
 import copy
 import unittest
 
-from campusflow.cli import menu_add_note, menu_reports, menu_search, menu_view_notes
+from campusflow.cli import (
+    menu_add_note,
+    menu_assign_ticket,
+    menu_create_ticket,
+    menu_reports,
+    menu_search,
+    menu_update_status,
+    menu_view_notes,
+    menu_view_ticket,
+)
 from campusflow.tickets import create_ticket
 from campusflow.workflow import assign_ticket, update_ticket_status
 
@@ -25,22 +34,31 @@ class TestCliMenus(unittest.TestCase):
         notes = menu_view_notes(self.tickets, scripted(["T001"]), self.out.append)
         self.assertEqual([n["note_id"] for n in notes], ["N001", "N002"])
 
-    def test_add_note_rejection_shows_message_and_changes_nothing(self):
-        before = copy.deepcopy(self.tickets)
-        for ticket_id, author, message in [("T001", "Mentor", "hi"), ("T001", " ", "long enough note"), ("T999", "M", "long enough note")]:
-            result = menu_add_note(self.tickets, scripted([ticket_id, author, message]), self.out.append)
-            self.assertIsNone(result)
-        self.assertEqual(self.tickets, before)
-        self.assertTrue(all("Could not add note" in line for line in self.out))
+    def test_each_note_field_is_rejected_immediately_then_reasked(self):
+        # blank author and too-short message are caught at THEIR field,
+        # and the rejected attempts must not consume a note ID.
+        inputs = ["T001", "   ", "Mentor", "hi", "Router reboot tried"]
+        note = menu_add_note(self.tickets, scripted(inputs), self.out.append)
+        self.assertEqual(note["note_id"], "N001")
+        self.assertTrue(any("Author cannot be blank" in line for line in self.out))
+        self.assertTrue(any("5-300 characters" in line for line in self.out))
+        self.assertEqual(len(self.tickets[0]["notes"]), 1)
 
-    def test_add_note_on_resolved_ticket_is_rejected(self):
+    def test_cancel_leaves_collection_unchanged(self):
+        before = copy.deepcopy(self.tickets)
+        for inputs in (["cancel"], ["T001", "cancel"], ["T001", "Mentor", "CANCEL"], ["T999", "cancel"]):
+            self.out.clear()
+            self.assertIsNone(menu_add_note(self.tickets, scripted(inputs), self.out.append))
+            self.assertIn("Cancelled.", self.out)
+        self.assertEqual(self.tickets, before)
+    def test_add_note_on_resolved_ticket_is_rejected_at_the_ticket_id_field(self):
         assign_ticket(self.tickets, "T001", "Sam")
         update_ticket_status(self.tickets, "T001", "in_progress")
         update_ticket_status(self.tickets, "T001", "resolved")
-        result = menu_add_note(self.tickets, scripted(["T001", "Mentor", "Trying to add late"]), self.out.append)
+        result = menu_add_note(self.tickets, scripted(["T001", "cancel"]), self.out.append)
         self.assertIsNone(result)
+        self.assertTrue(any("reopen first" in line for line in self.out))
         self.assertEqual(self.tickets[0]["notes"], [])
-
     def test_search_reprompts_on_invalid_filter(self):
         # invalid category 'food' is rejected, then blank accepted
         inputs = ["wifi", "food", "", "", ""]
@@ -83,6 +101,72 @@ class TestTicketIdCase(unittest.TestCase):
         notes = menu_view_notes(self.tickets, scripted([" t001 "]), self.out.append)
         self.assertEqual(len(notes), 1)
 
-    def test_unknown_id_still_rejected_after_normalizing(self):
-        self.assertIsNone(menu_add_note(self.tickets, scripted(["t999", "Mentor", "Router reboot tried"]), self.out.append))
+    def test_unknown_id_rejected_after_normalizing(self):
+        out = []
+        result = menu_add_note(self.tickets, scripted(["t999", "cancel"]), out.append)
+        self.assertIsNone(result)
+        self.assertTrue(any("T999 not found" in line for line in out))
         self.assertEqual(self.tickets[0]["notes"], [])
+
+
+class TestImmediateFieldValidation(unittest.TestCase):
+
+    def setUp(self):
+        self.tickets = []
+        self.out = []
+
+    def test_create_ticket_rejects_each_bad_field_immediately(self):
+        inputs = [
+            "", "   ", "WiFi down",          # title: blank twice, then valid
+            "", "food", "network",           # category
+            "", "urgent", "HIGH",            # urgency
+            "", "abc", "2.5", "0", "-3", "12",  # affected users
+        ]
+        ticket = menu_create_ticket(self.tickets, scripted(inputs), self.out.append)
+        self.assertEqual(ticket["id"], "T001")
+        self.assertEqual(ticket["category"], "Network")
+        self.assertEqual(ticket["urgency"], "high")
+        self.assertEqual(ticket["affected_users"], 12)
+        self.assertEqual(ticket["priority"], "critical")
+        self.assertEqual(len(self.tickets), 1)
+        self.assertEqual(sum("Invalid input" in line for line in self.out), 11)
+
+    def test_create_ticket_cancel_adds_nothing(self):
+        self.assertIsNone(menu_create_ticket(self.tickets, scripted(["WiFi", "cancel"]), self.out.append))
+        self.assertEqual(self.tickets, [])
+
+    def test_assign_rejects_blank_id_and_blank_staff_immediately(self):
+        create_ticket(self.tickets, "WiFi down", "Network", "high", 12)
+        ticket = menu_assign_ticket(self.tickets, scripted(["", "t001", "  ", "Sam"]), self.out.append)
+        self.assertEqual(ticket["assigned_to"], "Sam")
+        self.assertTrue(any("Ticket ID cannot be blank" in line for line in self.out))
+        self.assertTrue(any("Staff name cannot be blank" in line for line in self.out))
+
+    def test_assign_resolved_ticket_rejected_at_id_field(self):
+        create_ticket(self.tickets, "WiFi down", "Network", "high", 12)
+        assign_ticket(self.tickets, "T001", "Sam")
+        update_ticket_status(self.tickets, "T001", "in_progress")
+        update_ticket_status(self.tickets, "T001", "resolved")
+        self.assertIsNone(menu_assign_ticket(self.tickets, scripted(["T001", "cancel"]), self.out.append))
+        self.assertEqual(self.tickets[0]["assigned_to"], "Sam")
+        self.assertTrue(any("reopen first" in line for line in self.out))
+
+    def test_status_rejects_blank_and_unknown_status_immediately(self):
+        create_ticket(self.tickets, "WiFi down", "Network", "high", 12)
+        assign_ticket(self.tickets, "T001", "Sam")
+        ticket = menu_update_status(self.tickets, scripted(["T001", "", "done", "In_Progress"]), self.out.append)
+        self.assertEqual(ticket["status"], "in_progress")
+        self.assertEqual(sum("Status must be" in line for line in self.out), 2)
+
+    def test_unassigned_ticket_still_cannot_start_and_data_is_unchanged(self):
+        create_ticket(self.tickets, "WiFi down", "Network", "high", 12)
+        before = copy.deepcopy(self.tickets)
+        result = menu_update_status(self.tickets, scripted(["T001", "in_progress"]), self.out.append)
+        self.assertIsNone(result)
+        self.assertTrue(any("Could not update status" in line for line in self.out))
+        self.assertEqual(self.tickets, before)
+
+    def test_view_ticket_reasks_until_ticket_exists(self):
+        create_ticket(self.tickets, "WiFi down", "Network", "high", 12)
+        ticket = menu_view_ticket(self.tickets, scripted(["", "T404", "t001"]), self.out.append)
+        self.assertEqual(ticket["id"], "T001")

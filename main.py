@@ -1,16 +1,17 @@
 import os
 
-from campusflow.tickets import create_ticket, find_ticket
 from campusflow.storage import load_tickets, save_tickets
-from campusflow.workflow import assign_ticket, update_ticket_status
 from campusflow.queue import get_open_tickets, get_assigned_tickets, sort_tickets_by_priority
 from campusflow.cli import (
+    menu_create_ticket,
+    menu_view_ticket,
+    menu_assign_ticket,
+    menu_update_status,
     menu_add_note,
     menu_view_notes,
     menu_search,
     menu_reports,
     menu_understanding_check,
-    normalize_ticket_id,
 )
 
 DATA_PATH = os.path.join("data", "tickets.json")
@@ -43,46 +44,24 @@ def main():
         choice = input("Choice: ").strip()
         
         if choice == "1":
-            title = input("Title: ")
-            category = input("Category (network/software/hardware/access/other): ")
-            urgency = input("Urgency (low/medium/high): ")
-            try:
-                affected = int(input("Affected users: "))
-                t = create_ticket(tickets, title, category, urgency, affected)
-                print(f"Created {t['id']} priority={t['priority']}")
-            except Exception as e:
-                print(f"Error: {e}")
-                
+            menu_create_ticket(tickets)
+
         elif choice == "2":
             if not tickets:
                 print("No tickets")
             else:
                 for t in tickets:
                     print(f"{t['id']} | {t['title']} | {t['priority']} | {t['status']} | assigned={t.get('assigned_to')}")
-                
+
         elif choice == "3":
-            tid = normalize_ticket_id(input("Ticket ID: "))
-            t = find_ticket(tickets, tid)
-            print(t if t else "Not found")
-            
+            menu_view_ticket(tickets)
+
         elif choice == "4":
-            tid = normalize_ticket_id(input("Ticket ID: "))
-            staff = input("Assign to: ").strip()
-            try:
-                assign_ticket(tickets, tid, staff)
-                print("Assigned")
-            except Exception as e:
-                print(f"Error: {e}")
-                
+            menu_assign_ticket(tickets)
+
         elif choice == "5":
-            tid = normalize_ticket_id(input("Ticket ID: "))
-            status = input("New status (open/in_progress/resolved): ").strip()
-            try:
-                update_ticket_status(tickets, tid, status)
-                print("Status updated")
-            except Exception as e:
-                print(f"Error: {e}")
-                
+            menu_update_status(tickets)
+
         elif choice == "6":
             open_t = get_open_tickets(tickets)
             sorted_t = sort_tickets_by_priority(open_t)
