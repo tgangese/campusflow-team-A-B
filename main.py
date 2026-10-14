@@ -1,3 +1,5 @@
+import os
+
 from campusflow.tickets import create_ticket, find_ticket
 from campusflow.storage import load_tickets, save_tickets
 from campusflow.workflow import assign_ticket, update_ticket_status
@@ -10,8 +12,17 @@ from campusflow.cli import (
     menu_understanding_check,
 )
 
+DATA_PATH = os.path.join("data", "tickets.json")
+
+
 def main():
-    tickets = load_tickets()
+    try:
+        tickets = load_tickets(DATA_PATH)
+    except ValueError as error:
+        # Rejected load: leave the file untouched and do not start with bad data.
+        print(f"Could not load {DATA_PATH}: {error}")
+        print("Fix or move the file, then start again. Nothing was changed.")
+        return
     print("=== CampusFlow Helpdesk - Final Project F1-F7 ===")
     
     while True:
@@ -94,8 +105,9 @@ def main():
             menu_understanding_check(notes_path="data/understanding-notes.txt")
 
         elif choice == "12":
-            save_tickets(tickets)
-            print(f"Saved {len(tickets)} tickets to data/tickets.json. Bye!")
+            os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
+            save_tickets(DATA_PATH, tickets)
+            print(f"Saved {len(tickets)} tickets to {DATA_PATH}. Bye!")
             break
 
         else:
