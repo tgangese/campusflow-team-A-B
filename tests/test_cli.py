@@ -63,3 +63,26 @@ class TestCliMenus(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTicketIdCase(unittest.TestCase):
+
+    def setUp(self):
+        self.tickets = []
+        create_ticket(self.tickets, "WiFi down", "Network", "high", 12)
+        self.out = []
+
+    def test_normalize_ticket_id(self):
+        from campusflow.cli import normalize_ticket_id
+        self.assertEqual(normalize_ticket_id(" t001 "), "T001")
+        self.assertEqual(normalize_ticket_id("T001"), "T001")
+
+    def test_add_and_view_note_accept_lowercase_ticket_id(self):
+        note = menu_add_note(self.tickets, scripted(["t001", "Mentor A", "Router reboot tried"]), self.out.append)
+        self.assertEqual(note["note_id"], "N001")
+        notes = menu_view_notes(self.tickets, scripted([" t001 "]), self.out.append)
+        self.assertEqual(len(notes), 1)
+
+    def test_unknown_id_still_rejected_after_normalizing(self):
+        self.assertIsNone(menu_add_note(self.tickets, scripted(["t999", "Mentor", "Router reboot tried"]), self.out.append))
+        self.assertEqual(self.tickets[0]["notes"], [])

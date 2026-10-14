@@ -10,6 +10,7 @@ from campusflow.cli import (
     menu_search,
     menu_reports,
     menu_understanding_check,
+    normalize_ticket_id,
 )
 
 DATA_PATH = os.path.join("data", "tickets.json")
@@ -60,12 +61,12 @@ def main():
                     print(f"{t['id']} | {t['title']} | {t['priority']} | {t['status']} | assigned={t.get('assigned_to')}")
                 
         elif choice == "3":
-            tid = input("Ticket ID: ").strip()
+            tid = normalize_ticket_id(input("Ticket ID: "))
             t = find_ticket(tickets, tid)
             print(t if t else "Not found")
             
         elif choice == "4":
-            tid = input("Ticket ID: ").strip()
+            tid = normalize_ticket_id(input("Ticket ID: "))
             staff = input("Assign to: ").strip()
             try:
                 assign_ticket(tickets, tid, staff)
@@ -74,7 +75,7 @@ def main():
                 print(f"Error: {e}")
                 
         elif choice == "5":
-            tid = input("Ticket ID: ").strip()
+            tid = normalize_ticket_id(input("Ticket ID: "))
             status = input("New status (open/in_progress/resolved): ").strip()
             try:
                 update_ticket_status(tickets, tid, status)

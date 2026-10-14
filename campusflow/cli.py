@@ -27,6 +27,11 @@ def _ask_filter(label, allowed, input_fn, print_fn):
         print_fn(f"Invalid {label.lower()}. Choose one of: {', '.join(allowed)} or leave blank.")
 
 
+def normalize_ticket_id(raw):
+    """' t001 ' -> 'T001'. IDs are stored upper-case; users may type any case."""
+    return raw.strip().upper() if isinstance(raw, str) else raw
+
+
 def format_ticket_row(ticket):
     return (
         f"{ticket['id']} | {ticket['title']} | {ticket['category']} | "
@@ -36,7 +41,7 @@ def format_ticket_row(ticket):
 
 def menu_add_note(tickets, input_fn=input, print_fn=print):
     """Ask for ticket/author/message, call add_note, show friendly feedback."""
-    ticket_id = input_fn("Ticket ID: ").strip()
+    ticket_id = normalize_ticket_id(input_fn("Ticket ID: "))
     author = input_fn("Author: ")
     message = input_fn("Note message (5-300 chars): ")
     try:
@@ -50,7 +55,7 @@ def menu_add_note(tickets, input_fn=input, print_fn=print):
 
 def menu_view_notes(tickets, input_fn=input, print_fn=print):
     """Show every note on a ticket in note-ID order."""
-    ticket_id = input_fn("Ticket ID: ").strip()
+    ticket_id = normalize_ticket_id(input_fn("Ticket ID: "))
     ticket = find_ticket(tickets, ticket_id)
     if ticket is None:
         print_fn(f"Ticket {ticket_id} not found")
