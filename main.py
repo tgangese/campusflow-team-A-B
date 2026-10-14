@@ -1,34 +1,31 @@
+"""CampusFlow - Auto-save version"""
 import os
-
 from campusflow.storage import load_tickets, save_tickets
-from campusflow.queue import get_open_tickets, get_assigned_tickets, sort_tickets_by_priority
-from campusflow.cli import (
-    menu_create_ticket,
-    menu_view_ticket,
-    menu_assign_ticket,
-    menu_update_status,
-    menu_add_note,
-    menu_view_notes,
-    menu_search,
-    menu_reports,
-    menu_understanding_check,
-)
+from campusflow.tickets import create_ticket
+from campusflow.workflow import assign_ticket, update_ticket_status
+from campusflow.notes import add_note
+from campusflow.search import search_tickets
+from campusflow.reports import generate_report, format_report_text
 
-DATA_PATH = os.path.join("data", "tickets.json")
+TICKETS_PATH = "data/tickets.json"
 
+def ensure_dir():
+    os.makedirs(os.path.dirname(TICKETS_PATH), exist_ok=True)
+
+def auto_save(tickets):
+    ensure_dir()
+    save_tickets(TICKETS_PATH, tickets)
 
 def main():
+    ensure_dir()
     try:
-        tickets = load_tickets(DATA_PATH)
-    except ValueError as error:
-        # Rejected load: leave the file untouched and do not start with bad data.
-        print(f"Could not load {DATA_PATH}: {error}")
-        print("Fix or move the file, then start again. Nothing was changed.")
-        return
-    print("=== CampusFlow Helpdesk - Final Project F1-F7 ===")
-    
+        tickets = load_tickets(TICKETS_PATH)
+    except:
+        tickets = []
+
     while True:
-        print("\n1. Create ticket (F1)")
+        print("\n=== CampusFlow Helpdesk - Final Project F1-F7 ===")
+        print("1. Create ticket (F1)")
         print("2. List tickets (F2)")
         print("3. View ticket (F2)")
         print("4. Assign ticket (F3)")
@@ -39,59 +36,56 @@ def main():
         print("9. Reports")
         print("10. View ticket notes")
         print("11. Engineering Understanding Check")
-        print("12. Save & Exit (F7)")
-        
+        print("12. Exit (F7)")
+
         choice = input("Choice: ").strip()
-        
+
         if choice == "1":
-            menu_create_ticket(tickets)
-
-        elif choice == "2":
-            if not tickets:
-                print("No tickets")
-            else:
-                for t in tickets:
-                    print(f"{t['id']} | {t['title']} | {t['priority']} | {t['status']} | assigned={t.get('assigned_to')}")
-
-        elif choice == "3":
-            menu_view_ticket(tickets)
+            title = input("Title: ").strip()
+            category = input("Category (Network/Hardware/Software/Other): ").strip()
+            urgency = input("Urgency (low/medium/high): ").strip() or "medium"
+            try:
+                affected = int(input("Affected users: ").strip())
+                t = create_ticket(tickets, title, category, urgency, affected)
+                auto_save(tickets)
+                print(f"Created {t['id']} - auto-saved")
+            except Exception as e:
+                print(f"Error: {e}")
 
         elif choice == "4":
-            menu_assign_ticket(tickets)
+            tid = input("Ticket ID: ").strip()
+            staff = input("Staff name: ").strip()
+            try:
+                assign_ticket(tickets, tid, staff)
+                auto_save(tickets)
+                print(f"Assigned {tid} to {staff} - auto-saved")
+            except Exception as e:
+                print(f"Error: {e}")
 
         elif choice == "5":
-            menu_update_status(tickets)
+            tid = input("Ticket ID: ").strip()
+            new_status = input("New status (open/in_progress/resolved): ").strip()
+            try:
+                update_ticket_status(tickets, tid, new_status)
+                auto_save(tickets)
+                print(f"Status updated - auto-saved")
+            except Exception as e:
+                print(f"Error: {e}")
 
-        elif choice == "6":
-            open_t = get_open_tickets(tickets)
-            sorted_t = sort_tickets_by_priority(open_t)
-            print(f"--- OPEN QUEUE ({len(sorted_t)} tickets) sorted by priority ---")
-            for t in sorted_t:
-                print(f"{t['priority'].upper():8} | {t['id']} | {t['title']} | {t['affected_users']} users")
-                
         elif choice == "7":
-            menu_add_note(tickets)
-
-        elif choice == "8":
-            menu_search(tickets)
-
-        elif choice == "9":
-            menu_reports(tickets)
-
-        elif choice == "10":
-            menu_view_notes(tickets)
-
-        elif choice == "11":
-            menu_understanding_check(notes_path="data/understanding-notes.txt")
+            tid = input("Ticket ID: ").strip()
+            msg = input("Note message: ").strip()
+            author = input("Author: ").strip() or "felix"
+            try:
+                add_note(tickets, tid, msg, author)
+                auto_save(tickets)
+                print("Note added - auto-saved")
+            except Exception as e:
+                print(f"Error: {e}")
 
         elif choice == "12":
-            os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
-            save_tickets(DATA_PATH, tickets)
-            print(f"Saved {len(tickets)} tickets to {DATA_PATH}. Bye!")
+            print("Bye!")
             break
-
-        else:
-            print("Invalid choice. Please enter a number from 1 to 12.")
 
 if __name__ == "__main__":
     main()
