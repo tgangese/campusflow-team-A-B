@@ -6,7 +6,7 @@ from campusflow.tickets import find_ticket
 ALLOWED_TRANSITIONS = {
     "open": {"in_progress"},
     "in_progress": {"open", "resolved"},
-    "resolved": set(),
+    "resolved": {"open"},
 }
 
 
@@ -52,6 +52,11 @@ def update_ticket_status(tickets, ticket_id: str, new_status: str) -> dict:
 
     current_status = ticket["status"]
 
+    # Prevent an unassigned ticket from moving to in_progress.
+    if new_status == "in_progress" and not ticket.get("assigned_to"):
+        raise ValueError("Cannot start work on an unassigned ticket")
+
+    # Check whether the requested status transition is allowed.
     if new_status not in ALLOWED_TRANSITIONS[current_status]:
         raise ValueError(
             f"Cannot change status from '{current_status}' "
