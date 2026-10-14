@@ -11,3 +11,7 @@ def get_assigned_tickets(tickets, staff_name=None):
 
 def sort_by_priority(tickets):
     return sorted(tickets, key=lambda t: PRIORITY_ORDER.get(t["priority"], 99))
+
+def sort_tickets_by_priority(tickets):
+    # alias for old tests
+    return sort_by_priority(tickets)

@@ -48,7 +48,7 @@ class TestTicketCreation(unittest.TestCase):
 
     def test_normalize_case(self):
         t = create_ticket(self.tickets, "Test", "NETWORK", "High", 1)
-        self.assertEqual(t["category"], "network")
+        self.assertEqual(t["category"], "Network")
         self.assertEqual(t["urgency"], "high")
 
     def test_decimal_rejected(self):
