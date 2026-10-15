@@ -57,7 +57,7 @@ to save** - closing the window or pressing Ctrl+C does not save.
 | 9 | Reports |
 | 10 | View ticket notes |
 | 11 | Engineering Understanding Check |
-| 12 | Save & Exit |
+| 12 | Exit |
 
 Every field is validated as soon as you press Enter and only that field is asked again.
 Type `cancel` at any prompt to go back to the menu without changing anything.
@@ -69,7 +69,7 @@ Ticket IDs are accepted in any letter case (`t001` = `T001`).
 
 1. critical - high urgency AND affected_users >= 10
 2. high - high urgency OR affected_users >= 10
-3. medium - medium urgency OR affected_users >= 3
+3. medium - medium urgency OR affected_users >= 4
 4. low - everything else
 
 Category does not affect priority.
