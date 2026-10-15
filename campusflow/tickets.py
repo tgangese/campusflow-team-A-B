@@ -10,7 +10,6 @@ def _compute_priority(urgency, affected_users):
     return "low"
 
 def create_ticket(tickets, title, category, urgency, affected_users):
-    # validation (reuse your validation.py if you want)
     if not isinstance(title, str) or not title.strip():
         raise ValueError("Title cannot be blank")
     title = title.strip()
@@ -55,12 +54,7 @@ def create_ticket(tickets, title, category, urgency, affected_users):
     return ticket
 
 def find_ticket(tickets, ticket_id):
-    for t in tickets:
-        if t["id"] == ticket_id:
-            return t
-    return None
-
-def find_ticket(tickets, ticket_id):
+    """Case-insensitive: t001 = T001, ' t001 ' -> T001"""
     if not isinstance(ticket_id, str):
         return None
     tid = ticket_id.strip().upper()
