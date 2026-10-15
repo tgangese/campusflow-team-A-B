@@ -1,4 +1,4 @@
-"""CampusFlow - Full version with Auto-save on assign and notes"""
+"""CampusFlow - Full version - silent auto-save"""
 import os
 from campusflow.storage import load_tickets, save_tickets
 from campusflow.tickets import create_ticket, find_ticket
@@ -17,15 +17,14 @@ def auto_save(tickets):
     ensure_dir()
     save_tickets(TICKETS_PATH, tickets)
 
-# Compatibility import for understanding check
+def normalize_id(raw):
+    return raw.strip().upper() if isinstance(raw, str) else raw
+
 try:
     from campusflow.understanding_check import run_quiz
-except ImportError:
-    try:
-        from campusflow.cli import run_understanding_check as run_quiz
-    except:
-        def run_quiz():
-            print("Understanding Check not found")
+except:
+    def run_quiz():
+        print("Understanding Check not available")
 
 def main():
     ensure_dir()
@@ -53,128 +52,107 @@ def main():
 
         if choice == "1":
             title = input("Title: ").strip()
-            if title.lower() == "cancel":
-                continue
+            if title.lower() == "cancel": continue
             category = input("Category (Network/Hardware/Software/Other): ").strip()
-            if category.lower() == "cancel":
-                continue
+            if category.lower() == "cancel": continue
             urgency = input("Urgency (low/medium/high): ").strip() or "medium"
-            if urgency.lower() == "cancel":
-                continue
+            if urgency.lower() == "cancel": continue
             affected_raw = input("Affected users: ").strip()
-            if affected_raw.lower() == "cancel":
-                continue
+            if affected_raw.lower() == "cancel": continue
             try:
                 affected = int(affected_raw)
                 t = create_ticket(tickets, title, category, urgency, affected)
                 auto_save(tickets)
-                print(f"Created {t['id']} [{t['priority']}] - auto-saved to {TICKETS_PATH}")
+                print(f"Created {t['id']}")
             except Exception as e:
                 print(f"Error: {e}")
 
         elif choice == "2":
             if not tickets:
-                print("No tickets")
+                print("No tickets yet")
             else:
                 for t in tickets:
-                    print(f"{t['id']}: {t['title']} | {t['category']} | {t['priority']} | {t['status']} | assigned_to={t['assigned_to']}")
+                    assigned = t.get('assigned_to') or "Unassigned"
+                    print(f"{t['id']}: {t['title']} | {t['category']} | {t['priority']} | {t['status']} | {assigned}")
 
         elif choice == "3":
-            tid = input("Ticket ID: ").strip()
-            t = find_ticket(tickets, tid.upper())
+            raw = input("Ticket ID: ").strip()
+            t = find_ticket(tickets, raw)
             if not t:
-                t = find_ticket(tickets, tid)
-            if not t:
-                print(f"Ticket {tid} not found")
+                print(f"Ticket '{raw}' not found")
             else:
-                print(t)
+                print(f"\n--- {t['id']} ---")
+                print(f"Title: {t['title']}")
+                print(f"Category: {t['category']} | Urgency: {t['urgency']} | Priority: {t['priority']}")
+                print(f"Status: {t['status']} | Affected: {t['affected_users']} | Assigned to: {t.get('assigned_to') or 'None'}")
 
         elif choice == "4":
-            tid = input("Ticket ID: ").strip()
-            if tid.lower() == "cancel":
-                continue
+            raw = input("Ticket ID: ").strip()
             staff = input("Staff name: ").strip()
-            if staff.lower() == "cancel":
-                continue
             try:
-                assign_ticket(tickets, tid, staff)
+                assign_ticket(tickets, normalize_id(raw), staff)
                 auto_save(tickets)
-                print(f"Assigned {tid.upper()} to {staff} - auto-saved")
+                print(f"Assigned {normalize_id(raw)} to {staff}")
             except Exception as e:
                 print(f"Error: {e}")
 
         elif choice == "5":
-            tid = input("Ticket ID: ").strip()
-            if tid.lower() == "cancel":
-                continue
+            raw = input("Ticket ID: ").strip()
             status = input("New status (open/in_progress/resolved): ").strip()
-            if status.lower() == "cancel":
-                continue
             try:
-                update_ticket_status(tickets, tid, status)
+                update_ticket_status(tickets, normalize_id(raw), status)
                 auto_save(tickets)
-                print(f"Status updated to {status} - auto-saved")
+                print(f"Status updated")
             except Exception as e:
                 print(f"Error: {e}")
 
         elif choice == "6":
-            try:
-                open_t = get_open_tickets(tickets)
-                sorted_t = sort_by_priority(open_t)
-                if not sorted_t:
-                    print("No open tickets")
-                else:
-                    for t in sorted_t:
-                        print(f"{t['id']}: {t['title']} [{t['priority']}]")
-            except Exception as e:
-                print(f"Error: {e}")
+            open_t = get_open_tickets(tickets)
+            sorted_t = sort_by_priority(open_t)
+            if not sorted_t:
+                print("No open tickets")
+            else:
+                for t in sorted_t:
+                    print(f"{t['id']}: {t['title']} [{t['priority']}]")
 
         elif choice == "7":
-            tid = input("Ticket ID: ").strip()
-            if tid.lower() == "cancel":
-                continue
+            raw = input("Ticket ID: ").strip()
             msg = input("Note message: ").strip()
-            if msg.lower() == "cancel":
-                continue
             author = input("Author: ").strip() or "felix"
-            if author.lower() == "cancel":
-                continue
             try:
-                add_note(tickets, tid, msg, author)
+                add_note(tickets, normalize_id(raw), msg, author)
                 auto_save(tickets)
-                print("Note added - auto-saved")
+                print(f"Note added to {normalize_id(raw)}")
             except Exception as e:
                 print(f"Error: {e}")
 
         elif choice == "8":
-            kw = input("Search keyword (blank for all): ").strip()
+            kw = input("Search keyword (blank shows all, searches title + notes): ").strip()
             results = search_tickets(tickets, kw)
             if not results:
-                print("No results")
+                print(f"No tickets found for '{kw}'")
             else:
-                print(f"Found {len(results)}:")
+                print(f"Found {len(results)} ticket(s):")
                 for r in results:
-                    print(f"  {r['id']}: {r['title']}")
+                    assigned = r.get('assigned_to') or "Unassigned"
+                    print(f"  {r['id']}: {r['title']} | {r['priority']} | {r['status']} | {assigned}")
 
         elif choice == "9":
-            try:
-                report = generate_report(tickets)
-                print(format_report_text(report))
-            except Exception as e:
-                print(f"Error: {e}")
+            report = generate_report(tickets)
+            print(format_report_text(report))
 
         elif choice == "10":
-            tid = input("Ticket ID: ").strip()
-            t = find_ticket(tickets, tid.upper()) or find_ticket(tickets, tid)
+            raw = input("Ticket ID: ").strip()
+            t = find_ticket(tickets, raw)
             if not t:
-                print("Ticket not found")
+                print(f"Ticket '{raw}' not found")
             else:
                 notes = t.get("notes", [])
                 if not notes:
-                    print("No notes")
+                    print(f"{t['id']} has no notes")
                 else:
                     for n in notes:
-                        print(f"{n.get('note_id')}: {n.get('author')}: {n.get('message')}")
+                        print(f"{n.get('note_id')} | {n.get('author')}: {n.get('message')}")
 
         elif choice == "11":
             run_quiz()
@@ -182,11 +160,6 @@ def main():
         elif choice == "12":
             print("Bye!")
             break
-
-        else:
-            if choice == "":
-                continue
-            print("Invalid choice")
 
 if __name__ == "__main__":
     main()

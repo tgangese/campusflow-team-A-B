@@ -60,6 +60,17 @@ def find_ticket(tickets, ticket_id):
             return t
     return None
 
+def find_ticket(tickets, ticket_id):
+    if not isinstance(ticket_id, str):
+        return None
+    tid = ticket_id.strip().upper()
+    if not tid:
+        return None
+    for t in tickets:
+        if t.get("id", "").strip().upper() == tid:
+            return t
+    return None
+
 # --- Compatibility aliases for old tests ---
 PRIORITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 def calculate_priority(urgency, affected_users):
